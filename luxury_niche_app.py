@@ -68,6 +68,12 @@ html, body, [class*="css"] { font-family: 'Tajawal', sans-serif; }
 }
 
 div[data-testid="stTabs"] button { font-family: 'Tajawal', sans-serif !important; font-size: 1rem; }
+
+/* Start Button Styling */
+.stButton > button {
+    border-radius: 8px;
+    font-weight: 600;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,6 +98,7 @@ for key, val in {
     "products_stop": False,
     "brands_stop": False,
     "api_key_cycle": None,
+    "app_started": False,
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -194,7 +201,7 @@ def call_claude(prompt: str, api_keys: list, max_retries: int = 3) -> Optional[s
             if not client:
                 return None
             message = client.messages.create(
-                model="claude-opus-4-5",
+                model="claude-3-5-sonnet-20240620", # Updated to a valid model
                 max_tokens=4096,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -291,27 +298,44 @@ def build_product_prompt(row: dict) -> str:
 
 **الهيكل المطلوب (HTML):**
 <h2>قصة العطر — [عنوان جذاب]</h2>
-<p>[سرد إبداعي 3-4 فقرات عن إلهام العطر وفخامته]</p>
-
+<p>[وصف حسي فاخر]</p>
 <h2>السمفونية العطرية</h2>
 <h3>✦ نوتات الرأس</h3>
-<p>[وصف حسي للمكونات المذكورة فعلاً]</p>
+<p>{top_notes}</p>
 <h3>✦ نوتات القلب</h3>
-<p>[وصف حسي]</p>
+<p>{heart_notes}</p>
 <h3>✦ نوتات القاعدة</h3>
-<p>[وصف حسي]</p>
-
+<p>{base_notes}</p>
 <h2>المواصفات الفنية</h2>
 <ul>
 <li><strong>الماركة:</strong> {brand}</li>
-[باقي المواصفات من البيانات المتاحة]
+<li><strong>التصنيف:</strong> {category}</li>
 </ul>
-
 <h2>لماذا تختار هذا العطر من لكجري نيش؟</h2>
-<p>[3-4 فقرات إقناعية فاخرة]</p>
-
+<p>[فقرات إقناعية فاخرة]</p>
 <p style="text-align:center"><em>لكجري نيش | Luxury Niche — وجهتك الأولى لأفضل العطور النيش الأصلية في السعودية</em></p>"""
 
+
+# ─────────────────────────────────────────────
+# MAIN APP LOGIC
+# ─────────────────────────────────────────────
+
+# Start Screen
+if not st.session_state.app_started:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
+    with col_c2:
+        st.markdown("""
+        <div style="text-align:center; background:#1a1a2e; padding:3rem; border-radius:20px; border:2px solid #e8c45a;">
+            <h2 style="color:#e8c45a;">مرحباً بك في لكجري نيش</h2>
+            <p style="color:#ccc; font-size:1.2rem;">اضغط على الزر أدناه لبدء العمل على تحويل هويتك التجارية</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🚀 ابدأ العمل الآن", use_container_width=True, type="primary", key="main_start_btn"):
+            st.session_state.app_started = True
+            st.rerun()
+    st.stop()
 
 # ─────────────────────────────────────────────
 # SIDEBAR
@@ -351,6 +375,10 @@ with st.sidebar:
         st.metric("منتجات محولة", len(st.session_state.products_results))
     with col2:
         st.metric("ماركات محولة", len(st.session_state.brands_results))
+    
+    if st.button("🔄 إعادة ضبط التطبيق", use_container_width=True):
+        st.session_state.app_started = False
+        st.rerun()
 
 
 # ─────────────────────────────────────────────
@@ -531,6 +559,7 @@ with tab_brands:
             with c1:
                 st.markdown(f'<div class="metric-card"><div class="number">{total_brands}</div><div class="label">إجمالي الماركات</div></div>', unsafe_allow_html=True)
             with c2:
+                done_brands = len(st.session_state.brands_results)
                 st.markdown(f'<div class="metric-card"><div class="number">{done_brands}</div><div class="label">تم تحويلها</div></div>', unsafe_allow_html=True)
             with c3:
                 st.markdown(f'<div class="metric-card"><div class="number">{total_brands - done_brands}</div><div class="label">متبقية</div></div>', unsafe_allow_html=True)
@@ -733,11 +762,11 @@ with tab_sanitize:
         clean = sanitize_text(user_text)
         st.text_area("النص بعد التطهير", value=clean, height=150)
 
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align:center; color:#888; font-size:0.85rem; padding: 1rem;">
-        ✨ <strong style="color:#e8c45a">لكجري نيش | Luxury Niche</strong> — محوّل الهوية التجارية<br>
-        مبني بـ Python & Streamlit | يدعم Claude Opus 4.5
-    </div>
-    """, unsafe_allow_html=True)
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style="text-align:center; color:#888; font-size:0.85rem; padding: 1rem;">
+    ✨ <strong style="color:#e8c45a">لكجري نيش | Luxury Niche</strong> — محوّل الهوية التجارية<br>
+    مبني بـ Python & Streamlit | يدعم Claude 3.5 Sonnet
+</div>
+""", unsafe_allow_html=True)
